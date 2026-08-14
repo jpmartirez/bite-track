@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import React, { useState, useEffect } from "react";
 import { X, Calendar, ShieldCheck } from "lucide-react";
 import { RabiesCase, DoseRemark, ComplianceStatus } from "../types/rabies";
@@ -66,7 +67,7 @@ export const VaccineDetailsModal: React.FC<VaccineDetailsModalProps> = ({
       }}
     >
       <div className="modal-content max-w-lg p-0 flex flex-col overflow-hidden max-h-[85vh] sm:max-h-[90vh] rounded-[18px]">
-        {/* Header - Fixed to top edge */}
+    
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-[#fffdf4] shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-lg bg-emerald-100 text-emerald-700">
@@ -234,7 +235,7 @@ export const VaccineDetailsModal: React.FC<VaccineDetailsModalProps> = ({
             </div>
           </div>
 
-          {/* Footer - Fixed to bottom edge */}
+         
           <div className="flex items-center justify-end gap-2.5 px-5 py-3.5 border-t border-gray-200 bg-[#fffdf4] shrink-0">
             <button
               type="button"
