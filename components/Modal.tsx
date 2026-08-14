@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { CheckCircle2, AlertCircle, AlertTriangle, Info } from "lucide-react";
 
 export type ModalVariant = "success" | "danger" | "warning" | "info";
 
@@ -13,11 +14,11 @@ interface ModalProps {
   onCancel: () => void;
 }
 
-const variantIcons: Record<ModalVariant, string> = {
-  success: "✓",
-  danger: "!",
-  warning: "⚠",
-  info: "ℹ",
+const variantIcons: Record<ModalVariant, React.ReactNode> = {
+  success: <CheckCircle2 className="w-5 h-5" />,
+  danger: <AlertCircle className="w-5 h-5" />,
+  warning: <AlertTriangle className="w-5 h-5" />,
+  info: <Info className="w-5 h-5" />,
 };
 
 export const Modal: React.FC<ModalProps> = ({
