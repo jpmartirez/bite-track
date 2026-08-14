@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -6,6 +5,7 @@ import Header from "./Header";
 import PatientInfoForm from "./PatientInfoForm";
 import AnimalBiteForm from "./AnimalBiteForm";
 import CaseDatabaseTable from "./CaseDatabaseTable";
+import Modal, { ModalVariant } from "./Modal";
 import { RabiesCase, NewCaseFormData } from "../types/rabies";
 
 const LOCAL_STORAGE_KEY = "rabiesDB";
@@ -32,11 +32,29 @@ const initialFormState: NewCaseFormData = {
   booster: "",
 };
 
+interface ModalState {
+  isOpen: boolean;
+  title: string;
+  description: React.ReactNode;
+  variant: ModalVariant;
+  confirmText?: string;
+  cancelText?: string;
+  onConfirm?: () => void;
+}
+
 export const BiteTrackApp: React.FC = () => {
   const [cases, setCases] = useState<RabiesCase[]>([]);
   const [formData, setFormData] = useState<NewCaseFormData>(initialFormState);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoaded, setIsLoaded] = useState(false);
+
+  // Modal State
+  const [modalConfig, setModalConfig] = useState<ModalState>({
+    isOpen: false,
+    title: "",
+    description: null,
+    variant: "info",
+  });
 
   // Hydrate cases from LocalStorage on client side
   useEffect(() => {
@@ -52,7 +70,11 @@ export const BiteTrackApp: React.FC = () => {
     }
   }, []);
 
-  // Save cases to LocalStorage whenever cases array updates
+  const closeModal = () => {
+    setModalConfig((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  // Save cases to LocalStorage
   const saveToLocalStorage = (updatedCases: RabiesCase[]) => {
     try {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedCases));
@@ -66,7 +88,6 @@ export const BiteTrackApp: React.FC = () => {
     value: NewCaseFormData[K]
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    // Clear error for field if user modifies it
     if (errors[field]) {
       setErrors((prev) => {
         const next = { ...prev };
@@ -122,13 +143,24 @@ export const BiteTrackApp: React.FC = () => {
 
   const handleAddCase = () => {
     if (!validateForm()) {
-      alert("Please fill in all required fields in Patient's Information and Status of Biting Animal.");
+      setModalConfig({
+        isOpen: true,
+        title: "Required Fields Missing",
+        description: (
+          <span>
+            Please complete all required fields under <strong>Patient&apos;s Information</strong> and select at least one option under <strong>Status of Biting Animal</strong>.
+          </span>
+        ),
+        variant: "warning",
+        cancelText: "Got it",
+      });
       return;
     }
 
+    const patientName = formData.name.trim();
     const newRecord: RabiesCase = {
       id: Date.now(),
-      name: formData.name.trim(),
+      name: patientName,
       sex: formData.sex,
       age: formData.age.trim(),
       income: formData.income,
@@ -160,15 +192,50 @@ export const BiteTrackApp: React.FC = () => {
     // Reset form
     setFormData(initialFormState);
     setErrors({});
-    alert("Case added successfully!");
+
+    // Trigger Success Modal
+    setModalConfig({
+      isOpen: true,
+      title: "Case Registered Successfully",
+      description: (
+        <span>
+          Patient <strong>{patientName}</strong> has been successfully added to the Rabies Case Surveillance Database.
+        </span>
+      ),
+      variant: "success",
+      cancelText: "Done",
+    });
   };
 
-  const handleDeleteCase = (id: number) => {
-    if (confirm("Are you sure you want to delete this case?")) {
-      const updatedCases = cases.filter((c) => c.id !== id);
-      setCases(updatedCases);
-      saveToLocalStorage(updatedCases);
-    }
+  const handleRequestDelete = (caseRecord: RabiesCase) => {
+    setModalConfig({
+      isOpen: true,
+      title: "Confirm Case Deletion",
+      description: (
+        <span>
+          Are you sure you want to delete the record for <strong>{caseRecord.name}</strong>? This action cannot be undone.
+        </span>
+      ),
+      variant: "danger",
+      confirmText: "Delete Record",
+      cancelText: "Cancel",
+      onConfirm: () => {
+        const updatedCases = cases.filter((c) => c.id !== caseRecord.id);
+        setCases(updatedCases);
+        saveToLocalStorage(updatedCases);
+        closeModal();
+      },
+    });
+  };
+
+  const handleSaveMonthlyNotice = () => {
+    setModalConfig({
+      isOpen: true,
+      title: "Feature Disabled",
+      description: "The 'Save Monthly File' functionality is currently disabled for this version.",
+      variant: "info",
+      cancelText: "Understand",
+    });
   };
 
   const handleUpdateField = <K extends keyof RabiesCase>(
@@ -200,18 +267,31 @@ export const BiteTrackApp: React.FC = () => {
           onChange={handleFormFieldChange}
           onToggleAnimalStatus={handleToggleAnimalStatus}
           onAddCase={handleAddCase}
+          onSaveMonthlyFileNotice={handleSaveMonthlyNotice}
           errors={errors}
         />
         {isLoaded ? (
           <CaseDatabaseTable
             cases={cases}
             onUpdateField={handleUpdateField}
-            onDeleteCase={handleDeleteCase}
+            onRequestDelete={handleRequestDelete}
           />
         ) : (
           <div className="card text-center py-8">Loading database records...</div>
         )}
       </main>
+
+      {/* Global Minimalist Modal */}
+      <Modal
+        isOpen={modalConfig.isOpen}
+        title={modalConfig.title}
+        description={modalConfig.description}
+        variant={modalConfig.variant}
+        confirmText={modalConfig.confirmText}
+        cancelText={modalConfig.cancelText}
+        onConfirm={modalConfig.onConfirm}
+        onCancel={closeModal}
+      />
     </div>
   );
 };

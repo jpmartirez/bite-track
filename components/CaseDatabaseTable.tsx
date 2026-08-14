@@ -8,13 +8,13 @@ interface CaseDatabaseTableProps {
     field: K,
     value: RabiesCase[K]
   ) => void;
-  onDeleteCase: (id: number) => void;
+  onRequestDelete: (rabiesCase: RabiesCase) => void;
 }
 
 export const CaseDatabaseTable: React.FC<CaseDatabaseTableProps> = ({
   cases,
   onUpdateField,
-  onDeleteCase,
+  onRequestDelete,
 }) => {
   return (
     <div className="card">
@@ -212,7 +212,7 @@ export const CaseDatabaseTable: React.FC<CaseDatabaseTableProps> = ({
                     <button
                       type="button"
                       className="deletebtn"
-                      onClick={() => onDeleteCase(c.id)}
+                      onClick={() => onRequestDelete(c)}
                     >
                       Delete
                     </button>

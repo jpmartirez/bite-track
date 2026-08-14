@@ -15,6 +15,7 @@ interface AnimalBiteFormProps {
   ) => void;
   onToggleAnimalStatus: (status: string) => void;
   onAddCase: () => void;
+  onSaveMonthlyFileNotice: () => void;
   errors: Record<string, string>;
 }
 
@@ -25,6 +26,7 @@ export const AnimalBiteForm: React.FC<AnimalBiteFormProps> = ({
   onChange,
   onToggleAnimalStatus,
   onAddCase,
+  onSaveMonthlyFileNotice,
   errors,
 }) => {
   return (
@@ -213,10 +215,7 @@ export const AnimalBiteForm: React.FC<AnimalBiteFormProps> = ({
         <button
           type="button"
           className="savebtn"
-          title="Save Monthly File feature disabled for now"
-          onClick={() => {
-            alert("Save Monthly File functionality is disabled at this time.");
-          }}
+          onClick={onSaveMonthlyFileNotice}
         >
           Save Monthly File
         </button>
