@@ -1,20 +1,16 @@
 import React, { useState } from "react";
-import { Search, X } from "lucide-react";
-import { RabiesCase, DoseRemark, ComplianceStatus } from "../types/rabies";
+import { Search, X, Eye } from "lucide-react";
+import { RabiesCase } from "../types/rabies";
 
 interface CaseDatabaseTableProps {
   cases: RabiesCase[];
-  onUpdateField: <K extends keyof RabiesCase>(
-    id: number,
-    field: K,
-    value: RabiesCase[K]
-  ) => void;
+  onOpenVaccineDetails: (rabiesCase: RabiesCase) => void;
   onRequestDelete: (rabiesCase: RabiesCase) => void;
 }
 
 export const CaseDatabaseTable: React.FC<CaseDatabaseTableProps> = ({
   cases,
-  onUpdateField,
+  onOpenVaccineDetails,
   onRequestDelete,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -147,121 +143,16 @@ export const CaseDatabaseTable: React.FC<CaseDatabaseTableProps> = ({
                     <span>Consultation: {c.consult}</span>
                   </td>
 
-                  {/* Vaccine Schedule Column */}
+                  {/* Vaccine Schedule Column - Only the View Details button */}
                   <td>
-                    <div>
-                      <strong>1st Dose</strong>
-                      <input
-                        type="date"
-                        className="editbox"
-                        value={c.dose1 || ""}
-                        onChange={(e) =>
-                          onUpdateField(c.id, "dose1", e.target.value)
-                        }
-                      />
-                      <select
-                        className="smallselect"
-                        value={c.dose1Remark || "Given"}
-                        onChange={(e) =>
-                          onUpdateField(
-                            c.id,
-                            "dose1Remark",
-                            e.target.value as DoseRemark
-                          )
-                        }
-                      >
-                        <option value="Given">Given</option>
-                        <option value="Not Given">Not Given</option>
-                      </select>
-                    </div>
-
-                    <hr className="dose-divider" />
-
-                    <div>
-                      <strong>2nd Dose</strong>
-                      <input
-                        type="date"
-                        className="editbox"
-                        value={c.dose2 || ""}
-                        onChange={(e) =>
-                          onUpdateField(c.id, "dose2", e.target.value)
-                        }
-                      />
-                      <select
-                        className="smallselect"
-                        value={c.dose2Remark || "Given"}
-                        onChange={(e) =>
-                          onUpdateField(
-                            c.id,
-                            "dose2Remark",
-                            e.target.value as DoseRemark
-                          )
-                        }
-                      >
-                        <option value="Given">Given</option>
-                        <option value="Not Given">Not Given</option>
-                      </select>
-                    </div>
-
-                    <hr className="dose-divider" />
-
-                    <div>
-                      <strong>3rd Dose</strong>
-                      <input
-                        type="date"
-                        className="editbox"
-                        value={c.dose3 || ""}
-                        onChange={(e) =>
-                          onUpdateField(c.id, "dose3", e.target.value)
-                        }
-                      />
-                      <select
-                        className="smallselect"
-                        value={c.dose3Remark || "Given"}
-                        onChange={(e) =>
-                          onUpdateField(
-                            c.id,
-                            "dose3Remark",
-                            e.target.value as DoseRemark
-                          )
-                        }
-                      >
-                        <option value="Given">Given</option>
-                        <option value="Not Given">Not Given</option>
-                      </select>
-                    </div>
-
-                    <hr className="dose-divider" />
-
-                    <div>
-                      <strong>Booster</strong>
-                      <input
-                        type="date"
-                        className="editbox"
-                        value={c.booster || ""}
-                        onChange={(e) =>
-                          onUpdateField(c.id, "booster", e.target.value)
-                        }
-                      />
-                    </div>
-
-                    <div className="mt-3">
-                      <span>Compliance: </span>
-                      <select
-                        className="smallselect mt-1"
-                        value={c.compliance || "Compliant"}
-                        onChange={(e) =>
-                          onUpdateField(
-                            c.id,
-                            "compliance",
-                            e.target.value as ComplianceStatus
-                          )
-                        }
-                      >
-                        <option value="Compliant">Compliant</option>
-                        <option value="Non-Compliant">Non-Compliant</option>
-                      </select>
-                    </div>
+                    <button
+                      type="button"
+                      className="view-details-btn"
+                      onClick={() => onOpenVaccineDetails(c)}
+                    >
+                      <Eye className="w-4 h-4" />
+                      View Details
+                    </button>
                   </td>
 
                   {/* Actions Column */}

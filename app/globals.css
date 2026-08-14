@@ -219,6 +219,27 @@ button {
   background-color: var(--delete-btn-hover);
 }
 
+.view-details-btn {
+  background-color: #e6f4ea;
+  color: var(--header-bg);
+  border: 1px solid rgba(47, 133, 90, 0.3);
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.view-details-btn:hover {
+  background-color: var(--header-bg);
+  color: white;
+  box-shadow: 0 2px 8px rgba(47, 133, 90, 0.25);
+}
+
 /* Table styles */
 .tablewrap {
   overflow-x: auto;
@@ -299,6 +320,16 @@ hr.dose-divider {
   color: #334155;
 }
 
+.badge-compliant {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.badge-non-compliant {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
 .empty-state {
   text-align: center;
   padding: 32px 16px;
@@ -317,17 +348,21 @@ hr.dose-divider {
   justify-content: center;
   z-index: 9999;
   padding: 16px;
+  overflow-y: auto;
   animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .modal-content {
   background: var(--card-bg);
   border-radius: 18px;
-  padding: 24px 28px;
+  padding: 24px;
   max-width: 440px;
   width: 100%;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(0, 0, 0, 0.08);
+  margin: auto;
   animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 

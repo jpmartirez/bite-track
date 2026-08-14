@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -7,6 +6,7 @@ import PatientInfoForm from "./PatientInfoForm";
 import AnimalBiteForm from "./AnimalBiteForm";
 import CaseDatabaseTable from "./CaseDatabaseTable";
 import Modal, { ModalVariant } from "./Modal";
+import VaccineDetailsModal from "./VaccineDetailsModal";
 import { RabiesCase, NewCaseFormData } from "../types/rabies";
 
 const LOCAL_STORAGE_KEY = "rabiesDB";
@@ -49,13 +49,14 @@ export const BiteTrackApp: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Modal State
+  // Modal States
   const [modalConfig, setModalConfig] = useState<ModalState>({
     isOpen: false,
     title: "",
     description: null,
     variant: "info",
   });
+  const [selectedVaccineCase, setSelectedVaccineCase] = useState<RabiesCase | null>(null);
 
   // Hydrate cases from LocalStorage on client side
   useEffect(() => {
@@ -239,19 +240,13 @@ export const BiteTrackApp: React.FC = () => {
     });
   };
 
-  const handleUpdateField = <K extends keyof RabiesCase>(
-    id: number,
-    field: K,
-    value: RabiesCase[K]
-  ) => {
-    const updatedCases = cases.map((c) => {
-      if (c.id === id) {
-        return { ...c, [field]: value };
-      }
-      return c;
-    });
+  const handleSaveVaccineSchedule = (updatedCase: RabiesCase) => {
+    const updatedCases = cases.map((c) =>
+      c.id === updatedCase.id ? updatedCase : c
+    );
     setCases(updatedCases);
     saveToLocalStorage(updatedCases);
+    setSelectedVaccineCase(null);
   };
 
   return (
@@ -274,7 +269,7 @@ export const BiteTrackApp: React.FC = () => {
         {isLoaded ? (
           <CaseDatabaseTable
             cases={cases}
-            onUpdateField={handleUpdateField}
+            onOpenVaccineDetails={(c) => setSelectedVaccineCase(c)}
             onRequestDelete={handleRequestDelete}
           />
         ) : (
@@ -282,7 +277,7 @@ export const BiteTrackApp: React.FC = () => {
         )}
       </main>
 
-      {/* Global Minimalist Modal */}
+      {/* Global Minimalist Notification/Confirmation Modal */}
       <Modal
         isOpen={modalConfig.isOpen}
         title={modalConfig.title}
@@ -292,6 +287,14 @@ export const BiteTrackApp: React.FC = () => {
         cancelText={modalConfig.cancelText}
         onConfirm={modalConfig.onConfirm}
         onCancel={closeModal}
+      />
+
+      {/* Vaccine Schedule Modal */}
+      <VaccineDetailsModal
+        isOpen={Boolean(selectedVaccineCase)}
+        caseRecord={selectedVaccineCase}
+        onSave={handleSaveVaccineSchedule}
+        onClose={() => setSelectedVaccineCase(null)}
       />
     </div>
   );
