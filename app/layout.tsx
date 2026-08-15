@@ -16,6 +16,11 @@ export const metadata: Metadata = {
   title: "Bite Track - Rabies Case Surveillance System",
   description:
     "A web-based Rabies Case Surveillance and Tracking System for monitoring patient records, animal bite information, and vaccination compliance.",
+  icons: {
+    icon: "/bitetrack.png",
+    shortcut: "/bitetrack.png",
+    apple: "/bitetrack.png",
+  },
 };
 
 export default function RootLayout({
