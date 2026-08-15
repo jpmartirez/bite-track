@@ -62,7 +62,7 @@ export const Modal: React.FC<ModalProps> = ({
         if (e.target === e.currentTarget) onCancel();
       }}
     >
-      <div className="modal-content" role="dialog" aria-modal="true">
+      <div className="modal-content modal-content-sm" role="dialog" aria-modal="true">
         <div className="modal-header">
           <div className={`modal-icon modal-icon-${variant}`}>
             {variantIcons[variant]}

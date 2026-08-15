@@ -32,6 +32,7 @@ export interface SupabaseCaseRow {
 const mapRowToRabiesCase = (row: SupabaseCaseRow): RabiesCase => {
   return {
     id: row.id,
+    createdAt: row.created_at || new Date().toISOString(),
     name: row.name || "",
     sex: (row.sex || "Male") as SexOption,
     age: row.age || "",
@@ -77,7 +78,7 @@ export const fetchCasesFromSupabase = async (): Promise<RabiesCase[]> => {
 };
 
 export const addCaseToSupabase = async (
-  newCaseData: Omit<RabiesCase, "id">
+  newCaseData: Omit<RabiesCase, "id" | "createdAt">
 ): Promise<RabiesCase> => {
   if (!isSupabaseConfigured()) {
     throw new Error("Supabase is not configured yet. Please add your credentials to .env");
