@@ -1,14 +1,24 @@
 /* eslint-disable react-hooks/set-state-in-effect */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Header from "./Header";
 import PatientInfoForm from "./PatientInfoForm";
 import AnimalBiteForm from "./AnimalBiteForm";
 import CaseDatabaseTable from "./CaseDatabaseTable";
 import Modal, { ModalVariant } from "./Modal";
 import VaccineDetailsModal from "./VaccineDetailsModal";
+import LoadingSpinner from "./LoadingSpinner";
 import { RabiesCase, NewCaseFormData } from "../types/rabies";
+import { isSupabaseConfigured } from "../lib/supabaseClient";
+import {
+  fetchCasesFromSupabase,
+  addCaseToSupabase,
+  updateCaseInSupabase,
+  deleteCaseFromSupabase,
+} from "../lib/casesService";
+import { Database, AlertCircle } from "lucide-react";
 
 const LOCAL_STORAGE_KEY = "rabiesDB";
 
@@ -48,7 +58,9 @@ export const BiteTrackApp: React.FC = () => {
   const [cases, setCases] = useState<RabiesCase[]>([]);
   const [formData, setFormData] = useState<NewCaseFormData>(initialFormState);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isMutating, setIsMutating] = useState(false);
+  const [usingSupabase, setUsingSupabase] = useState(false);
 
   // Modal States
   const [modalConfig, setModalConfig] = useState<ModalState>({
@@ -59,31 +71,49 @@ export const BiteTrackApp: React.FC = () => {
   });
   const [selectedVaccineCase, setSelectedVaccineCase] = useState<RabiesCase | null>(null);
 
-  // Hydrate cases from LocalStorage on client side
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (stored) {
-        setCases(JSON.parse(stored));
+  // Fetch Cases from Supabase or LocalStorage fallback
+  const loadDatabaseCases = useCallback(async () => {
+    setIsLoading(true);
+    const hasConfig = isSupabaseConfigured();
+    setUsingSupabase(hasConfig);
+
+    if (hasConfig) {
+      try {
+        const data = await fetchCasesFromSupabase();
+        setCases(data);
+      } catch (err: any) {
+        console.error("Failed to fetch cases from Supabase:", err);
+        // Fallback to local storage if fetch fails
+        try {
+          const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+          if (stored) setCases(JSON.parse(stored));
+        } catch (e) {
+          console.error("Failed to read local storage fallback:", e);
+        }
+      } finally {
+        setIsLoading(false);
       }
-    } catch (e) {
-      console.error("Failed to parse cases from LocalStorage:", e);
-    } finally {
-      setIsLoaded(true);
+    } else {
+      // Local Storage Fallback
+      try {
+        const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (stored) {
+          setCases(JSON.parse(stored));
+        }
+      } catch (e) {
+        console.error("Failed to parse cases from LocalStorage:", e);
+      } finally {
+        setIsLoading(false);
+      }
     }
   }, []);
 
+  useEffect(() => {
+    loadDatabaseCases();
+  }, [loadDatabaseCases]);
+
   const closeModal = () => {
     setModalConfig((prev) => ({ ...prev, isOpen: false }));
-  };
-
-  // Save cases to LocalStorage
-  const saveToLocalStorage = (updatedCases: RabiesCase[]) => {
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedCases));
-    } catch (e) {
-      console.error("Failed to save to LocalStorage:", e);
-    }
   };
 
   const handleFormFieldChange = <K extends keyof NewCaseFormData>(
@@ -144,7 +174,7 @@ export const BiteTrackApp: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleAddCase = () => {
+  const handleAddCase = async () => {
     if (!validateForm()) {
       setModalConfig({
         isOpen: true,
@@ -161,8 +191,7 @@ export const BiteTrackApp: React.FC = () => {
     }
 
     const patientName = formData.name.trim();
-    const newRecord: RabiesCase = {
-      id: Date.now(),
+    const newRecordData = {
       name: patientName,
       sex: formData.sex,
       age: formData.age.trim(),
@@ -182,32 +211,51 @@ export const BiteTrackApp: React.FC = () => {
       dose2: formData.dose2,
       dose3: formData.dose3,
       booster: formData.booster,
-      dose1Remark: "Given",
-      dose2Remark: "Given",
-      dose3Remark: "Given",
-      compliance: "Compliant",
+      dose1Remark: "Given" as const,
+      dose2Remark: "Given" as const,
+      dose3Remark: "Given" as const,
+      compliance: "Compliant" as const,
     };
 
-    const updatedCases = [...cases, newRecord];
-    setCases(updatedCases);
-    saveToLocalStorage(updatedCases);
+    setIsMutating(true);
+    try {
+      if (usingSupabase) {
+        const createdRecord = await addCaseToSupabase(newRecordData);
+        setCases((prev) => [createdRecord, ...prev]);
+      } else {
+        const fallbackRecord: RabiesCase = { id: Date.now(), ...newRecordData };
+        const updatedCases = [fallbackRecord, ...cases];
+        setCases(updatedCases);
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedCases));
+      }
 
-    // Reset form
-    setFormData(initialFormState);
-    setErrors({});
+      // Reset form
+      setFormData(initialFormState);
+      setErrors({});
 
-    // Trigger Success Modal
-    setModalConfig({
-      isOpen: true,
-      title: "Case Registered Successfully",
-      description: (
-        <span>
-          Patient <strong>{patientName}</strong> has been successfully added to the Rabies Case Surveillance Database.
-        </span>
-      ),
-      variant: "success",
-      cancelText: "Done",
-    });
+      // Trigger Success Modal
+      setModalConfig({
+        isOpen: true,
+        title: "Case Registered Successfully",
+        description: (
+          <span>
+            Patient <strong>{patientName}</strong> has been successfully added to the Rabies Case Surveillance Database.
+          </span>
+        ),
+        variant: "success",
+        cancelText: "Done",
+      });
+    } catch (err: any) {
+      setModalConfig({
+        isOpen: true,
+        title: "Error Saving Case",
+        description: err?.message || "An error occurred while saving to the database.",
+        variant: "danger",
+        cancelText: "Close",
+      });
+    } finally {
+      setIsMutating(false);
+    }
   };
 
   const handleRequestDelete = (caseRecord: RabiesCase) => {
@@ -222,11 +270,29 @@ export const BiteTrackApp: React.FC = () => {
       variant: "danger",
       confirmText: "Delete Record",
       cancelText: "Cancel",
-      onConfirm: () => {
-        const updatedCases = cases.filter((c) => c.id !== caseRecord.id);
-        setCases(updatedCases);
-        saveToLocalStorage(updatedCases);
-        closeModal();
+      onConfirm: async () => {
+        setIsMutating(true);
+        try {
+          if (usingSupabase) {
+            await deleteCaseFromSupabase(caseRecord.id);
+            setCases((prev) => prev.filter((c) => c.id !== caseRecord.id));
+          } else {
+            const updatedCases = cases.filter((c) => c.id !== caseRecord.id);
+            setCases(updatedCases);
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedCases));
+          }
+          closeModal();
+        } catch (err: any) {
+          setModalConfig({
+            isOpen: true,
+            title: "Error Deleting Case",
+            description: err?.message || "Failed to delete case record from database.",
+            variant: "danger",
+            cancelText: "Close",
+          });
+        } finally {
+          setIsMutating(false);
+        }
       },
     });
   };
@@ -241,19 +307,58 @@ export const BiteTrackApp: React.FC = () => {
     });
   };
 
-  const handleSaveVaccineSchedule = (updatedCase: RabiesCase) => {
-    const updatedCases = cases.map((c) =>
-      c.id === updatedCase.id ? updatedCase : c
-    );
-    setCases(updatedCases);
-    saveToLocalStorage(updatedCases);
-    setSelectedVaccineCase(null);
+  const handleSaveVaccineSchedule = async (updatedCase: RabiesCase) => {
+    setIsMutating(true);
+    try {
+      if (usingSupabase) {
+        const saved = await updateCaseInSupabase(updatedCase.id, updatedCase);
+        setCases((prev) => prev.map((c) => (c.id === saved.id ? saved : c)));
+      } else {
+        const updatedCases = cases.map((c) =>
+          c.id === updatedCase.id ? updatedCase : c
+        );
+        setCases(updatedCases);
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedCases));
+      }
+      setSelectedVaccineCase(null);
+    } catch (err: any) {
+      setModalConfig({
+        isOpen: true,
+        title: "Error Updating Vaccine Schedule",
+        description: err?.message || "Failed to update record in database.",
+        variant: "danger",
+        cancelText: "Close",
+      });
+    } finally {
+      setIsMutating(false);
+    }
   };
 
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
       <main className="container flex-1">
+        {/* Environment Credentials Notice if not configured */}
+        {!usingSupabase && (
+          <div className="card bg-amber-50 border border-amber-200 text-amber-900 mb-6 p-4 rounded-xl flex items-start gap-3 shadow-none">
+            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="text-xs sm:text-sm leading-relaxed">
+              <strong className="font-bold block mb-0.5 text-amber-950">
+                Supabase Setup Required
+              </strong>
+              Add your <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">NEXT_PUBLIC_SUPABASE_URL</code> and <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> credentials to your <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">.env</code> file to connect your live Supabase cloud database. (Currently running in LocalStorage fallback mode).
+            </div>
+          </div>
+        )}
+
+        {/* Database Status Indicator */}
+        {usingSupabase && (
+          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700 mb-4 px-1">
+            <Database className="w-4 h-4 text-emerald-600" />
+            <span>Connected to Supabase Cloud Database</span>
+          </div>
+        )}
+
         <PatientInfoForm
           formData={formData}
           onChange={handleFormFieldChange}
@@ -267,14 +372,20 @@ export const BiteTrackApp: React.FC = () => {
           onSaveMonthlyFileNotice={handleSaveMonthlyNotice}
           errors={errors}
         />
-        {isLoaded ? (
+
+        {/* Case Database Card with Loading Animation */}
+        {isLoading ? (
+          <div className="card">
+            <LoadingSpinner message="Fetching cases from Supabase Database..." />
+          </div>
+        ) : (
           <CaseDatabaseTable
             cases={cases}
             onOpenVaccineDetails={(c) => setSelectedVaccineCase(c)}
             onRequestDelete={handleRequestDelete}
+            onRefresh={loadDatabaseCases}
+            isRefreshing={isMutating}
           />
-        ) : (
-          <div className="card text-center py-8">Loading database records...</div>
         )}
       </main>
 
