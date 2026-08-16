@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import XLSX from "xlsx-js-style";
 import { RabiesCase } from "../types/rabies";
 
 const getRecordMonthYear = (record: RabiesCase): string => {
@@ -74,11 +74,126 @@ export const exportCasesToMonthlyExcel = (cases: RabiesCase[]): void => {
     const excelRows = monthCases.map(formatCaseRowForExcel);
     const worksheet = XLSX.utils.json_to_sheet(excelRows);
 
-    // Auto-size column widths
-    const maxCols = Object.keys(excelRows[0] || {}).map((key) => ({
-      wch: Math.max(key.length + 4, 16),
-    }));
+    const headers = Object.keys(excelRows[0] || {});
+
+    // Auto-size column widths dynamically based on headers and data length
+    const maxCols = headers.map((header) => {
+      let maxLen = header.length;
+      excelRows.forEach((row) => {
+        const val = String((row as Record<string, unknown>)[header] ?? "");
+        if (val.length > maxLen) {
+          maxLen = val.length;
+        }
+      });
+      return { wch: Math.max(maxLen + 4, 15) };
+    });
     worksheet["!cols"] = maxCols;
+
+    // Set row heights: Header row = 28pt, Data rows = 20pt
+    worksheet["!rows"] = [
+      { hpt: 28 },
+      ...excelRows.map(() => ({ hpt: 20 })),
+    ];
+
+    // Decode worksheet range for formatting
+    const range = XLSX.utils.decode_range(worksheet["!ref"] || "A1");
+
+    const headerStyle = {
+      font: {
+        name: "Calibri",
+        sz: 11,
+        bold: true,
+        color: { rgb: "FFFFFF" },
+      },
+      fill: {
+        patternType: "solid",
+        fgColor: { rgb: "15803D" },
+      },
+      alignment: {
+        vertical: "center",
+        horizontal: "center",
+        wrapText: true,
+      },
+      border: {
+        top: { style: "thin", color: { rgb: "166534" } },
+        bottom: { style: "medium", color: { rgb: "14532D" } },
+        left: { style: "thin", color: { rgb: "166534" } },
+        right: { style: "thin", color: { rgb: "166534" } },
+      },
+    };
+
+    // Data row styling options with alternating zebra stripes
+    const dataStyleEven = {
+      font: { name: "Calibri", sz: 10, color: { rgb: "0F172A" } },
+      fill: { patternType: "solid", fgColor: { rgb: "F8FAFC" } },
+      alignment: { vertical: "center", horizontal: "left" },
+      border: {
+        top: { style: "thin", color: { rgb: "E2E8F0" } },
+        bottom: { style: "thin", color: { rgb: "E2E8F0" } },
+        left: { style: "thin", color: { rgb: "E2E8F0" } },
+        right: { style: "thin", color: { rgb: "E2E8F0" } },
+      },
+    };
+
+    const dataStyleOdd = {
+      font: { name: "Calibri", sz: 10, color: { rgb: "0F172A" } },
+      fill: { patternType: "solid", fgColor: { rgb: "FFFFFF" } },
+      alignment: { vertical: "center", horizontal: "left" },
+      border: {
+        top: { style: "thin", color: { rgb: "E2E8F0" } },
+        bottom: { style: "thin", color: { rgb: "E2E8F0" } },
+        left: { style: "thin", color: { rgb: "E2E8F0" } },
+        right: { style: "thin", color: { rgb: "E2E8F0" } },
+      },
+    };
+
+    // Columns that look better centered
+    const centeredFields = new Set([
+      "Case ID",
+      "Registration Date",
+      "Sex",
+      "Age",
+      "Socioeconomic Status",
+      "Previous Anti-rabies Vaccine",
+      "Vaccine Complete Date",
+      "Type of Ownership",
+      "Wound Care",
+      "Consultation Time",
+      "1st Dose Date",
+      "1st Dose Remark",
+      "2nd Dose Date",
+      "2nd Dose Remark",
+      "3rd Dose Date",
+      "3rd Dose Remark",
+      "Booster Date",
+      "Compliance Status",
+    ]);
+
+    // Apply styles to cells
+    for (let R = range.s.r; R <= range.e.r; ++R) {
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+        if (!worksheet[cellAddress]) continue;
+
+        if (R === 0) {
+          // Apply Header style
+          worksheet[cellAddress].s = headerStyle;
+        } else {
+          // Apply Data Row style
+          const fieldName = headers[C];
+          const isCentered = centeredFields.has(fieldName);
+          const baseStyle = R % 2 === 0 ? dataStyleEven : dataStyleOdd;
+
+          worksheet[cellAddress].s = {
+            ...baseStyle,
+            alignment: {
+              vertical: "center",
+              horizontal: isCentered ? "center" : "left",
+            },
+          };
+        }
+      }
+    }
 
     // Excel sheet name limit is 31 chars
     const sheetName = monthKey.slice(0, 31);
@@ -89,3 +204,4 @@ export const exportCasesToMonthlyExcel = (cases: RabiesCase[]): void => {
   const filename = `Rabies_Surveillance_Monthly_Report_${new Date().getFullYear()}.xlsx`;
   XLSX.writeFile(workbook, filename);
 };
+
